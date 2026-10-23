@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BTS Route 04 — Hourglass Kinetic Studio</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Three.js r128 & OrbitControls CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Monochrome Design System Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="nav-brand-group">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M6 2v6l4 4-4 4v6h12v-6l-4-4 4-4V2H6zm10 14.5V20H8v-3.5l4-4 4 4zM12 11.5L8 7.5V4h8v3.5l-4 4z"/>
+        </svg>
+      </div>
+      <h1 class="brand-title">BTS Route 04</h1>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn btn-icon" id="btn-theme-toggle" title="Toggle UI light/dark theme">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      <button class="btn btn-icon" id="btn-toggle-sidebar" title="Toggle controls sidebar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      </button>
+      <button class="btn btn-primary" id="btn-open-export">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Studio Workspace -->
+  <main class="app-workspace">
+    <!-- Viewport Stage -->
+    <section class="viewport-stage" id="viewport-stage">
+      
+      <!-- Floating Control Bar -->
+      <nav class="floating-bar" id="floating-bar" aria-label="Viewport controls">
+        <div class="bar-item">
+          <label for="aspect-preset" class="bar-label">Ratio</label>
+          <select id="aspect-preset" class="bar-select">
+            <option value="16:9">16:9 landscape</option>
+            <option value="1:1">1:1 square</option>
+            <option value="4:3">4:3 standard</option>
+            <option value="9:16">9:16 vertical</option>
+            <option value="21:9">21:9 ultrawide</option>
+            <option value="custom">Custom size</option>
+          </select>
+        </div>
+
+        <!-- Custom Dimensions (Shown only when 'custom' selected) -->
+        <div class="custom-dim-group" id="custom-dim-group">
+          <div class="bar-dim-box">
+            <span>W</span>
+            <input type="number" id="dim-w" value="1920" min="100" max="8192" step="10">
+          </div>
+          <span class="dim-cross">×</span>
+          <div class="bar-dim-box">
+            <span>H</span>
+            <input type="number" id="dim-h" value="1080" min="100" max="8192" step="10">
+          </div>
+        </div>
+
+        <div class="bar-sep"></div>
+
+        <!-- Play / Pause Motion Button -->
+        <button class="bar-action-btn" id="bar-btn-play" title="Play or pause kinetic motion">
+          <svg id="icon-bar-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          <svg id="icon-bar-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="lbl-bar-play">Pause</span>
+        </button>
+
+        <div class="bar-sep"></div>
+
+        <!-- Reset Camera -->
+        <button class="bar-action-btn" id="btn-reset-camera" title="Reset camera view">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>Reset</span>
+        </button>
+
+        <!-- Fullscreen Toggle (Frame Dynamically Scales to Fill Display) -->
+        <button class="bar-action-btn" id="btn-frame-fullscreen" title="Expand preview frame fullscreen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          <span id="lbl-fullscreen">Fullscreen</span>
+        </button>
+      </nav>
+
+      <!-- Explicit Bounding Preview Frame -->
+      <div class="preview-frame-wrapper" id="preview-frame-wrapper">
+        <div class="preview-frame" id="preview-frame">
+          <div id="webgl-canvas-container"></div>
+          <!-- Sharp Structural Frame Guides -->
+          <div class="frame-guide guide-tl"></div>
+          <div class="frame-guide guide-tr"></div>
+          <div class="frame-guide guide-bl"></div>
+          <div class="frame-guide guide-br"></div>
+          <div class="frame-aspect-tag" id="frame-aspect-tag">16:9</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      
+      <!-- Accordion 1: Media sequence -->
+      <section class="accordion-item open">
+        <header class="accordion-header">
+          <h2>Media sequence</h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </header>
+        <div class="accordion-body">
+          <div class="form-group">
+            <span class="field-label">Content mode</span>
+            <div class="segmented-control" id="content-mode-segment">
+              <button class="segment-btn active" data-value="images">Image sequence</button>
+              <button class="segment-btn" data-value="text">Kinetic text ribbon</button>
+            </div>
+          </div>
+
+          <!-- Image Sequence Panel -->
+          <div id="image-mode-subpanel" class="subpanel">
+            <div class="dropzone" id="dropzone">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p>Drop images here or click to browse</p>
+              <span>PNG, JPG, WebP, SVG</span>
+            </div>
+
+            <div class="strip-header-row">
+              <span class="field-label">Sequence items</span>
+              <span id="sequence-count" class="count-tag">6 items</span>
+            </div>
+
+            <div class="strip-list" id="strip-list">
+              <!-- Reorderable sequence populated dynamically -->
+            </div>
+
+            <div class="form-group">
+              <div class="field-header">
+                <span class="field-label">Slot spacing / gap</span>
+                <span class="val-tag" id="val-slot-gap">0px</span>
+              </div>
+              <input type="range" id="param-slot-gap" min="0" max="60" value="0">
+            </div>
+
+            <div class="form-group">
+              <div class="field-header">
+                <span class="field-label">Marquee position offset</span>
+                <span class="val-tag" id="val-marquee-offset">0%</span>
+              </div>
+              <input type="range" id="param-marquee-offset" min="0" max="100" step="0.5" value="0">
+            </div>
+          </div>
+
+          <!-- Shape Text Flow Subpanel (Undistorted Typesetting on Transparent Canvas) -->
+          <div id="text-mode-subpanel" class="subpanel" style="display: none;">
+            <div class="form-group">
+              <span class="field-label">Text stream content (line breaks supported)</span>
+              <textarea class="text-input-field" id="text-ribbon-content">stories stories stories stories
+technology stories
+ideas ideas ideas
+conversations
+solutions ideas
+solutions ideas
+solutions ideas
+solutions ideas
+conversations
+ideas ideas stories
+technology stories
+stories stories stories stories</textarea>
+            </div>
+
+            <div class="form-group">
+              <span class="field-label">Custom font (.ttf, .otf, .woff)</span>
+              <div class="font-dropzone" id="font-dropzone">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                <span id="font-status-label">Upload custom typography</span>
+              </div>
+              <input type="file" id="font-file-input" accept=".ttf,.otf,.woff,.woff2" style="display:none;">
+            </div>
+
+            <div class="form-group">
+              <div class="field-header">
+                <span class="field-label">Font size</span>
+                <span class="val-tag" id="val-text-size">30px</span>
+              </div>
+              <input type="range" id="param-text-size" min="14" max="72" value="30">
+            </div>
+
+            <div class="form-group">
+              <div class="field-header">
+                <span class="field-label">Line spacing factor</span>
+                <span class="val-tag" id="val-line-height">1.25</span>
+              </div>
+              <input type="range" id="param-line-height" min="0.9" max="2.0" step="0.05" value="1.25">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Accordion 2: Hourglass geometry -->
+      <section class="accordion-item open">
+        <header class="accordion-header">
+          <h2>Hourglass geometry</h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </header>
+        <div class="accordion-body">
+          <div class="form-group">
+            <span class="field-label">Space mode</span>
+            <div class="segmented-control" id="space-mode-segment">
+              <button class="segment-btn active" data-value="2d">2D planar curve</button>
+              <button class="segment-btn" data-value="3d">3D circular space</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <span class="field-label">Orientation</span>
+            <div class="segmented-control" id="orientation-segment">
+              <button class="segment-btn active" data-value="horizontal">Horizontal wrap</button>
+              <button class="segment-btn" data-value="vertical">Vertical wrap</button>
+            </div>
+          </div>
+
+          <!-- Wrap Style Selection -->
+          <div class="form-group">
+            <span class="field-label">Wrap style</span>
+            <div class="segmented-control" id="curve-profile-segment">
+              <button class="segment-btn active" data-value="hourglass">Hourglass</button>
+              <button class="segment-btn" data-value="arc-lower">Arc lower</button>
+              <button class="segment-btn" data-value="pinch">Pinch</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Curviness intensity</span>
+              <span class="val-tag" id="val-curviness">0.65</span>
+            </div>
+            <input type="range" id="param-curviness" min="0.0" max="2.0" step="0.02" value="0.65">
+          </div>
+
+          <div class="form-group" id="row-circular-arc" style="display:none;">
+            <div class="field-header">
+              <span class="field-label">3D circular arc angle</span>
+              <span class="val-tag" id="val-circular-arc">180°</span>
+            </div>
+            <input type="range" id="param-circular-arc" min="60" max="360" step="5" value="180">
+          </div>
+
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Mesh subdivisions</span>
+              <span class="val-tag" id="val-subdivisions">140</span>
+            </div>
+            <input type="range" id="param-subdivisions" min="40" max="260" step="10" value="140">
+          </div>
+        </div>
+      </section>
+
+      <!-- Accordion 3: Kinetic animation -->
+      <section class="accordion-item open">
+        <header class="accordion-header">
+          <h2>Kinetic animation</h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </header>
+        <div class="accordion-body">
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Marquee motion speed</span>
+              <span class="val-tag" id="val-marquee-speed">0.25</span>
+            </div>
+            <input type="range" id="param-marquee-speed" min="-2.0" max="2.0" step="0.05" value="0.25">
+          </div>
+
+          <div class="button-row">
+            <button class="btn" id="btn-toggle-oscillate">
+              <span>Oscillate curve: Off</span>
+            </button>
+            <button class="btn" id="btn-reset-offset">
+              <span>Reset offset</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Accordion 4: Canvas background modes -->
+      <section class="accordion-item open">
+        <header class="accordion-header">
+          <h2>Canvas background</h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </header>
+        <div class="accordion-body">
+          <div class="form-group">
+            <span class="field-label">Background mode</span>
+            <div class="segmented-control" id="bg-mode-segment">
+              <button class="segment-btn active" data-value="solid">Solid color</button>
+              <button class="segment-btn" data-value="gradient">Gradient</button>
+              <button class="segment-btn" data-value="transparent">Transparent</button>
+            </div>
+          </div>
+
+          <!-- Solid Mode Subpanel -->
+          <div id="bg-solid-options" class="subpanel">
+            <div class="form-group">
+              <div class="field-header">
+                <span class="field-label">Background color</span>
+                <input type="color" id="bg-solid-color-picker" value="#ffffff" class="color-picker-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Gradient Mode Subpanel -->
+          <div id="bg-gradient-options" class="subpanel" style="display:none;">
+            <div class="form-group">
+              <span class="field-label">Gradient style</span>
+              <div class="segmented-control" id="gradient-type-segment">
+                <button class="segment-btn active" data-value="linear">Linear</button>
+                <button class="segment-btn" data-value="radial">Radial</button>
+                <button class="segment-btn" data-value="angle">Angle</button>
+                <button class="segment-btn" data-value="diamond">Diamond</button>
+              </div>
+            </div>
+
+            <div class="color-stop-grid">
+              <div class="color-stop-card">
+                <span class="field-label">Color A</span>
+                <input type="color" id="grad-color-a" value="#222222" class="color-picker-input">
+              </div>
+              <div class="color-stop-card">
+                <span class="field-label">Color B</span>
+                <input type="color" id="grad-color-b" value="#050505" class="color-picker-input">
+              </div>
+            </div>
+
+            <div class="form-group" id="grad-angle-row">
+              <div class="field-header">
+                <span class="field-label">Gradient angle</span>
+                <span class="val-tag" id="val-grad-angle">90°</span>
+              </div>
+              <input type="range" id="param-grad-angle" min="0" max="360" step="5" value="90">
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+  </main>
+
+  <!-- Export Dialog Modal -->
+  <div class="modal-backdrop" id="export-modal" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+      <header class="modal-header">
+        <h3>Export media</h3>
+        <button class="icon-btn-close" id="btn-close-modal" aria-label="Close export dialog">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </header>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <span class="field-label">Media type</span>
+          <div class="segmented-control" id="export-media-type-segment">
+            <button class="segment-btn active" data-value="image">Image snapshot</button>
+            <button class="segment-btn" data-value="video">Kinetic video</button>
+          </div>
+        </div>
+
+        <!-- Image Options -->
+        <div id="export-image-options" class="subpanel">
+          <div class="form-group">
+            <span class="field-label">Format</span>
+            <div class="segmented-control" id="export-img-format-segment">
+              <button class="segment-btn active" data-value="png">PNG (Lossless)</button>
+              <button class="segment-btn" data-value="jpeg">JPEG</button>
+            </div>
+          </div>
+
+          <div class="form-group" id="jpeg-quality-group" style="display:none;">
+            <div class="field-header">
+              <span class="field-label">JPEG compression quality</span>
+              <span class="val-tag" id="val-jpeg-quality">92%</span>
+            </div>
+            <input type="range" id="param-jpeg-quality" min="30" max="100" value="92">
+          </div>
+        </div>
+
+        <!-- Video Options -->
+        <div id="export-video-options" class="subpanel" style="display:none;">
+          <div class="form-group">
+            <span class="field-label">Video container</span>
+            <div class="segmented-control" id="export-vid-format-segment">
+              <button class="segment-btn active" data-value="webm">WebM (VP9)</button>
+              <button class="segment-btn" data-value="mp4">MP4 (H.264)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Duration</span>
+              <span class="val-tag" id="val-vid-duration">6s</span>
+            </div>
+            <input type="range" id="param-vid-duration" min="2" max="20" step="1" value="6">
+          </div>
+
+          <div class="form-group">
+            <span class="field-label">Framerate</span>
+            <div class="segmented-control" id="export-fps-segment">
+              <button class="segment-btn" data-value="30">30 FPS</button>
+              <button class="segment-btn active" data-value="60">60 FPS</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scale Quality -->
+        <div class="form-group">
+          <span class="field-label">Resolution scale</span>
+          <div class="segmented-control" id="export-scale-segment">
+            <button class="segment-btn active" data-value="1">1×</button>
+            <button class="segment-btn" data-value="2">2× (HiDPI)</button>
+            <button class="segment-btn" data-value="4">4× (Ultra)</button>
+          </div>
+        </div>
+
+        <!-- Progress Box -->
+        <div class="export-progress-box" id="export-progress-box">
+          <div class="field-header">
+            <span id="export-status-label">Recording sequence...</span>
+            <span class="val-tag" id="export-progress-pct">0%</span>
+          </div>
+          <div class="progress-bar-rail">
+            <div class="progress-bar-indicator" id="export-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button class="btn" id="btn-cancel-export">Cancel</button>
+        <button class="btn btn-primary" id="btn-start-export">Download file</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Hidden File Input Triggers -->
+  <input type="file" id="multi-file-input" multiple accept="image/*" style="display:none;">
+  <input type="file" id="replace-file-input" accept="image/*" style="display:none;">
+
+  <!-- Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
