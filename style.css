@@ -4,22 +4,6 @@
    ========================================================================== */
 
 :root {
-  --bg-page: #000000;
-  --bg-panel: #0d0d0d;
-  --bg-panel-subtle: #141414;
-  --bg-input: #1a1a1a;
-  --bg-input-hover: #262626;
-  --border-strong: #333333;
-  --border-subtle: #1f1f1f;
-  --text-primary: #ffffff;
-  --text-muted: #888888;
-  --text-dim: #555555;
-  --accent-active: #ffffff;
-  --accent-inverse: #000000;
-  --font-mono-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-[data-theme="light"] {
   --bg-page: #f5f5f5;
   --bg-panel: #ffffff;
   --bg-panel-subtle: #eaeaea;
@@ -32,6 +16,22 @@
   --text-dim: #999999;
   --accent-active: #000000;
   --accent-inverse: #ffffff;
+  --font-mono-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg-page: #000000;
+  --bg-panel: #0d0d0d;
+  --bg-panel-subtle: #141414;
+  --bg-input: #1a1a1a;
+  --bg-input-hover: #262626;
+  --border-strong: #333333;
+  --border-subtle: #1f1f1f;
+  --text-primary: #ffffff;
+  --text-muted: #888888;
+  --text-dim: #555555;
+  --accent-active: #ffffff;
+  --accent-inverse: #000000;
 }
 
 /* Global Zero-Radius Reset */
@@ -131,6 +131,18 @@ body {
   color: var(--accent-active);
 }
 
+.btn-balance {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-panel-subtle);
+  border: 1px solid var(--border-strong);
+  font-weight: 600;
+}
+.btn-balance:hover {
+  background: var(--accent-active);
+  color: var(--accent-inverse);
+}
+
 /* Workspace Layout */
 .app-workspace {
   flex: 1;
@@ -166,7 +178,7 @@ body {
   gap: 8px;
   z-index: 40;
   font-size: 11px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
 
 .bar-item {
@@ -327,7 +339,7 @@ body {
 
 /* Sidebar & Accordions */
 .sidebar {
-  width: 360px;
+  width: 370px;
   background: var(--bg-panel);
   border-left: 1px solid var(--border-strong);
   display: flex;
