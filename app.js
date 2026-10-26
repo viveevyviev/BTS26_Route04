@@ -1,20 +1,23 @@
 /**
  * BTS Route 04 — Hourglass Kinetic Studio
- * Full Application Script (app.js)
+ * Dynamic 1:1 Aspect-Fill Shader & Universal Marquee/Aperture Decoupling
  */
 
-// Application Reactive State (Defaults to Light Theme & White Canvas)
+// Application Reactive State
 const state = {
   uiTheme: 'light',
   aspectPreset: '16:9',
   customW: 1920,
   customH: 1080,
-  contentMode: 'images',      // 'images' | 'text'
-  spaceMode: '2d',            // '2d' | '3d'
-  wrapStyle: 'hourglass',     // 'hourglass' | 'arc-lower' | 'pinch'
-  orientation: 'horizontal',  // 'horizontal' | 'vertical'
-  curviness: 0.65,
-  circularArc: 180,           // degrees
+  contentMode: 'images',          // 'images' | 'text'
+  spaceMode: '2d',                // '2d' | '3d'
+  wrapStyle: 'hourglass',         // 'hourglass' | 'arc-lower' | 'pinch'
+  orientation: 'horizontal',      // Aperture Axis: 'horizontal' (Left/Right Gates) | 'vertical' (Top/Bottom Gates)
+  marqueeDirection: 'horizontal', // Flow Direction: 'horizontal' (X-scroll) | 'vertical' (Y-scroll)
+  apertureWidth: 0.35,            // Gate translation offset [0.0 - 1.5]
+  curveRadius: 1.20,              // Fixed curvature radius (R)
+  curviness: 0.65,                // Curvature depth scale
+  circularArc: 180,               // 3D cylindrical arc degrees
   subdivisions: 140,
   slotGap: 0,
   manualMarqueeOffset: 0.0,
@@ -23,7 +26,7 @@ const state = {
   oscillateCurve: false,
   oscillationTicker: 0,
 
-  // Text Flow State
+  // Text Ribbon
   textRibbon: `stories stories stories stories
 technology stories
 ideas ideas ideas
@@ -40,7 +43,7 @@ stories stories stories stories`,
   lineHeightFactor: 1.25,
   customFontFamily: 'Inter',
 
-  // Canvas Background State
+  // Canvas Background
   bgMode: 'solid',
   solidColor: '#ffffff',
   gradientType: 'linear',
@@ -55,7 +58,7 @@ stories stories stories stories`,
   accumulatedMotion: 0
 };
 
-// Procedural Card Factory (Monochrome Architectural Texture Samples)
+// Procedural Media Samples
 function createProceduralCard(title, subtitle, colA, colB, motif) {
   const c = document.createElement('canvas');
   c.width = 1200;
@@ -133,7 +136,7 @@ const renderer = new THREE.WebGLRenderer({
   preserveDrawingBuffer: true
 });
 
-// Requirement 3: Sharp Texture & Display Ratio
+// Requirement 3: Sharp Texture & Pixel Ratio Setup
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.NoToneMapping;
@@ -145,7 +148,7 @@ controls.dampingFactor = 0.05;
 controls.minDistance = 1.0;
 controls.maxDistance = 25;
 
-// Sharp Texture Configurator
+// Requirement 3: Sharp Texture Configuration Helper
 function configureSharpTexture(texture) {
   texture.generateMipmaps = true;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -168,12 +171,22 @@ function updateBackgroundRendering() {
   if (state.bgMode === 'transparent') {
     scene.background = null;
     renderer.setClearColor(0x000000, 0);
+    if (apertureMaterial) {
+      apertureMaterial.uniforms.uBlinderAlpha.value = 0.0;
+      apertureMaterial.uniforms.uBgMode.value = 0;
+    }
     return;
   }
 
   if (state.bgMode === 'solid') {
     scene.background = new THREE.Color(state.solidColor);
     renderer.setClearColor(new THREE.Color(state.solidColor), 1);
+    if (apertureMaterial) {
+      const rgb = hexToRgb(state.solidColor);
+      apertureMaterial.uniforms.uBlinderColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+      apertureMaterial.uniforms.uBlinderAlpha.value = 1.0;
+      apertureMaterial.uniforms.uBgMode.value = 1;
+    }
     return;
   }
 
@@ -243,6 +256,11 @@ function updateBackgroundRendering() {
   bgTexture.needsUpdate = true;
   scene.background = bgTexture;
   renderer.setClearColor(0x000000, 1);
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.uBlinderAlpha.value = 1.0;
+    apertureMaterial.uniforms.uBgMode.value = 2;
+    apertureMaterial.uniforms.tBgTexture.value = bgTexture;
+  }
 }
 
 function hexToRgb(hex) {
@@ -251,7 +269,7 @@ function hexToRgb(hex) {
     r: parseInt(result[1], 16),
     g: parseInt(result[2], 16),
     b: parseInt(result[3], 16)
-  } : { r: 0, g: 0, b: 0 };
+  } : { r: 255, g: 255, b: 255 };
 }
 
 // Requirement 2: Aspect-Fill / Object-Cover Canvas Drawer
@@ -275,7 +293,7 @@ function drawImageCover(ctx, img, x, y, w, h) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
-// Requirement 1 & 2: Dynamic Sequence Width & Cover Atlas
+// Requirement 1 & 2: Dynamic Sequence Width & 1:1 Square Slots Atlas
 const atlasCanvas = document.createElement('canvas');
 const atlasCtx = atlasCanvas.getContext('2d');
 let atlasTexture = new THREE.CanvasTexture(atlasCanvas);
@@ -289,11 +307,11 @@ function updateTextureAtlas() {
 
   const items = state.mediaItems;
   const count = Math.max(items.length, 1);
-  const slotSize = 1024; // Square 1:1 slot base
-  const isVertical = state.orientation === 'vertical';
+  const slotSize = 1024; // Base 1:1 square slot resolution
+  const isVerticalMarquee = state.marqueeDirection === 'vertical';
 
-  // Total canvas dynamically matches sequence length
-  if (!isVertical) {
+  // Atlas dimensions match sequence flow (Width = count * slotSize or Height = count * slotSize)
+  if (!isVerticalMarquee) {
     atlasCanvas.width = count * slotSize;
     atlasCanvas.height = slotSize;
   } else {
@@ -309,26 +327,12 @@ function updateTextureAtlas() {
   } else {
     const gap = state.slotGap;
     items.forEach((item, idx) => {
-      if (!isVertical) {
+      if (!isVerticalMarquee) {
         const x = idx * slotSize;
-        drawImageCover(
-          atlasCtx,
-          item.canvas,
-          x + gap / 2,
-          gap / 2,
-          slotSize - gap,
-          slotSize - gap
-        );
+        drawImageCover(atlasCtx, item.canvas, x + gap / 2, gap / 2, slotSize - gap, slotSize - gap);
       } else {
         const y = idx * slotSize;
-        drawImageCover(
-          atlasCtx,
-          item.canvas,
-          gap / 2,
-          y + gap / 2,
-          slotSize - gap,
-          slotSize - gap
-        );
+        drawImageCover(atlasCtx, item.canvas, gap / 2, y + gap / 2, slotSize - gap, slotSize - gap);
       }
     });
   }
@@ -337,13 +341,13 @@ function updateTextureAtlas() {
   atlasTexture = new THREE.CanvasTexture(atlasCanvas);
   configureSharpTexture(atlasTexture);
 
-  if (hourglassMaterial) {
-    hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
-    hourglassMaterial.uniforms.uImageCount.value = count;
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.tDiffuse.value = atlasTexture;
+    apertureMaterial.uniforms.uImageCount.value = count;
   }
 }
 
-// Shaped Typography Flow (No Box/Stroke Fill, Pure Text Contour)
+// Kinetic Typography Mode
 function renderShapedTypography() {
   atlasCanvas.width = 2048;
   atlasCanvas.height = 2048;
@@ -351,7 +355,6 @@ function renderShapedTypography() {
 
   const w = atlasCanvas.width;
   const h = atlasCanvas.height;
-  const isVertical = state.orientation === 'vertical';
 
   const rawLines = state.textRibbon.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (rawLines.length === 0) return;
@@ -366,126 +369,39 @@ function renderShapedTypography() {
   atlasCtx.textAlign = 'center';
   atlasCtx.textBaseline = 'middle';
 
-  const intensity = state.curviness;
+  const totalLines = rawLines.length;
+  const blockHeight = totalLines * lineSpacing;
+  const startY = (h - blockHeight) / 2 + lineSpacing / 2;
 
-  if (isVertical) {
-    const totalLines = rawLines.length;
-    const blockHeight = totalLines * lineSpacing;
-    const startY = (h - blockHeight) / 2 + lineSpacing / 2;
-
-    rawLines.forEach((line, idx) => {
-      const y = startY + idx * lineSpacing;
-      const normY = (y - h / 2) / (h / 2);
-
-      let pinchFactor = 1.0;
-      if (state.wrapStyle === 'hourglass') {
-        pinchFactor = 1.0 - intensity * (1.0 - Math.pow(normY, 2)) * 0.65;
-      } else if (state.wrapStyle === 'arc-lower') {
-        pinchFactor = 1.0 - intensity * (1.0 - normY) * 0.45;
-      } else if (state.wrapStyle === 'pinch') {
-        pinchFactor = 1.0 - intensity * Math.exp(-Math.pow(normY * 2.4, 2)) * 0.75;
-      }
-
-      const maxLineWidth = Math.max(100, (w * 0.9) * Math.max(0.2, pinchFactor));
-
-      atlasCtx.save();
-      const measuredW = atlasCtx.measureText(line).width;
-      if (measuredW > maxLineWidth) {
-        const scale = maxLineWidth / measuredW;
-        atlasCtx.translate(w / 2, y);
-        atlasCtx.scale(scale, scale);
-        atlasCtx.fillText(line, 0, 0);
-      } else {
-        atlasCtx.fillText(line, w / 2, y);
-      }
-      atlasCtx.restore();
-    });
-  } else {
-    const totalLines = rawLines.length;
-    const blockHeight = totalLines * lineSpacing;
-    const startY = (h - blockHeight) / 2 + lineSpacing / 2;
-
-    rawLines.forEach((line, idx) => {
-      const y = startY + idx * lineSpacing;
-      atlasCtx.fillText(line, w / 2, y);
-    });
-  }
+  rawLines.forEach((line, idx) => {
+    const y = startY + idx * lineSpacing;
+    atlasCtx.fillText(line, w / 2, y);
+  });
 
   atlasTexture.dispose();
   atlasTexture = new THREE.CanvasTexture(atlasCanvas);
   configureSharpTexture(atlasTexture);
 
-  if (hourglassMaterial) {
-    hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
-    hourglassMaterial.uniforms.uImageCount.value = 1.0;
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.tDiffuse.value = atlasTexture;
+    apertureMaterial.uniforms.uImageCount.value = 1.0;
   }
 }
 
-// GLSL Shaders for Continuous Geometry & Aspect-Fill Sampling
-const vertexShader = `
+// Vertex Shader
+const apertureVertexShader = `
   varying vec2 vUv;
-  varying float vPinch;
+  varying vec3 vWorldPos;
 
-  uniform float uCurviness;
-  uniform int uWrapStyle;
-  uniform int uOrientation;
   uniform int uIs3D;
   uniform float uCircularArc;
   uniform float uTotalWidth;
-  uniform float uTotalHeight;
-  uniform int uContentMode;
 
   void main() {
     vUv = uv;
-
-    float u = position.x / (uTotalWidth * 0.5);
-    float v = position.y / (uTotalHeight * 0.5);
-
-    float pinch = 1.0;
-
-    if (uContentMode == 0) {
-      if (uOrientation == 0) {
-        if (uWrapStyle == 0) {
-          pinch = 1.0 - uCurviness * (1.0 - u * u) * 0.46;
-        } else if (uWrapStyle == 1) {
-          float normV = (v + 1.0) * 0.5;
-          pinch = 1.0 - normV * (uCurviness * (1.0 - u * u) * 0.55);
-        } else if (uWrapStyle == 2) {
-          pinch = 1.0 - uCurviness * exp(-pow(u * 2.6, 2.0)) * 0.58;
-        }
-      } else {
-        if (uWrapStyle == 0) {
-          pinch = 1.0 - uCurviness * (1.0 - v * v) * 0.46;
-        } else if (uWrapStyle == 1) {
-          float normV = (v + 1.0) * 0.5;
-          pinch = 1.0 - normV * (uCurviness * (1.0 - v * v) * 0.55);
-        } else if (uWrapStyle == 2) {
-          pinch = 1.0 - uCurviness * exp(-pow(v * 2.6, 2.0)) * 0.58;
-        }
-      }
-    }
-
-    vPinch = pinch;
     vec3 pos = position;
 
-    if (uContentMode == 0) {
-      if (uOrientation == 0) {
-        if (uWrapStyle == 1) {
-          float normV = (v + 1.0) * 0.5;
-          pos.y -= normV * (uCurviness * (1.0 - u * u) * (uTotalHeight * 0.55));
-        } else {
-          pos.y *= pinch;
-        }
-      } else {
-        if (uWrapStyle == 1) {
-          float normV = (v + 1.0) * 0.5;
-          pos.y -= normV * (uCurviness * (1.0 - v * v) * (uTotalHeight * 0.55));
-        } else {
-          pos.x *= pinch;
-        }
-      }
-    }
-
+    // 3D Circular Space wrap around cylindrical radius
     if (uIs3D == 1) {
       float radius = uTotalWidth / uCircularArc;
       float theta = (pos.x / uTotalWidth) * uCircularArc;
@@ -493,131 +409,246 @@ const vertexShader = `
       pos.z = -cos(theta) * radius + radius;
     }
 
+    vWorldPos = pos;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
   }
 `;
 
-const fragmentShader = `
+// Requirement 2: Aspect-Fill / Object-Cover Fragment Shader (Eliminates Squeezing/Distortion)
+const apertureFragmentShader = `
   uniform sampler2D tDiffuse;
+  uniform sampler2D tBgTexture;
   uniform float uImageCount;
   uniform float uOffset;
-  uniform int uOrientation;
-  uniform int uContentMode;
+  uniform int uApertureOrientation; // 0: Horizontal Gates (Left/Right), 1: Vertical Gates (Top/Bottom)
+  uniform int uMarqueeDirection;     // 0: Horizontal Flow, 1: Vertical Flow
+  uniform int uWrapStyle;            // 0: Hourglass, 1: Arc Lower, 2: Pinch
+  uniform float uApertureWidth;      // Translation offset parameter
+  uniform float uCurveRadius;        // Fixed curvature radius (R)
+  uniform float uCurviness;          // Curviness depth
+  uniform vec3 uBlinderColor;
+  uniform float uBlinderAlpha;
+  uniform int uBgMode;              // 0: Transparent, 1: Solid, 2: Gradient
+  uniform float uTotalWidth;
+  uniform float uTotalHeight;
 
   varying vec2 vUv;
-  varying float vPinch;
+  varying vec3 vWorldPos;
 
   void main() {
-    if (uContentMode == 1) {
-      gl_FragColor = texture2D(tDiffuse, vUv);
-      return;
-    }
-
     vec2 finalUv;
 
-    if (uOrientation == 0) {
+    // 1. Universal Aspect-Fill / Object-Cover Texture Sampling
+    if (uMarqueeDirection == 0) {
+      // Horizontal Marquee Flow: N 1:1 frames along X
       float uScrolled = fract(vUv.x + uOffset);
       float frameFloat = uScrolled * uImageCount;
       float frameIndex = floor(frameFloat);
       float uLocal = fract(frameFloat);
+      float vLocal = vUv.y;
 
-      // Requirement 2: Aspect-Fill / Cover around center (uv - 0.5)
-      vec2 centered = vec2(uLocal - 0.5, vUv.y - 0.5);
-      centered.y *= vPinch;
+      // Calculate allocated quad aspect ratio on the mesh
+      float frameAspect = (uTotalWidth / uImageCount) / uTotalHeight;
 
+      // Apply object-fit: cover around (0.5, 0.5) so pixels never stretch or squash
+      vec2 centered = vec2(uLocal - 0.5, vLocal - 0.5);
+      if (frameAspect > 1.0) {
+        centered.y /= frameAspect;
+      } else {
+        centered.x *= frameAspect;
+      }
       vec2 localCoverUv = clamp(centered + 0.5, 0.0, 1.0);
+
       float atlasU = (frameIndex + localCoverUv.x) / uImageCount;
       finalUv = vec2(atlasU, localCoverUv.y);
     } else {
+      // Vertical Marquee Flow: N 1:1 frames along Y
       float vScrolled = fract(vUv.y + uOffset);
       float frameFloat = vScrolled * uImageCount;
       float frameIndex = floor(frameFloat);
       float vLocal = fract(frameFloat);
+      float uLocal = vUv.x;
 
-      vec2 centered = vec2(vUv.x - 0.5, vLocal - 0.5);
-      centered.x *= vPinch;
+      float frameAspect = uTotalWidth / (uTotalHeight / uImageCount);
 
+      // Apply object-fit: cover around (0.5, 0.5)
+      vec2 centered = vec2(uLocal - 0.5, vLocal - 0.5);
+      if (frameAspect > 1.0) {
+        centered.y /= frameAspect;
+      } else {
+        centered.x *= frameAspect;
+      }
       vec2 localCoverUv = clamp(centered + 0.5, 0.0, 1.0);
+
       float atlasV = (frameIndex + localCoverUv.y) / uImageCount;
       finalUv = vec2(localCoverUv.x, atlasV);
     }
 
-    gl_FragColor = texture2D(tDiffuse, finalUv);
+    vec4 contentColor = texture2D(tDiffuse, finalUv);
+
+    // 2. Fixed Curvature Aperture Gate Calculations
+    float R = max(0.001, uCurveRadius);
+    float depth = uCurviness;
+    float delta = 0.0;
+    float apertureDist = 0.0;
+
+    if (uApertureOrientation == 0) {
+      // Horizontal Aperture (Gates translate on X axis, curve varies with Y)
+      float y = vWorldPos.y;
+      if (uWrapStyle == 0) {
+        delta = (y * y) / (2.0 * R) * depth;
+      } else if (uWrapStyle == 1) {
+        float normY = max(0.0, y + (uTotalHeight * 0.5));
+        delta = (normY * normY) / (4.0 * R) * depth;
+      } else if (uWrapStyle == 2) {
+        delta = depth * R * (1.0 - exp(-(y * y) / (R * R * 0.4)));
+      }
+
+      float leftGateX = -uApertureWidth - delta;
+      float rightGateX = uApertureWidth + delta;
+
+      float distLeft = vWorldPos.x - leftGateX;
+      float distRight = rightGateX - vWorldPos.x;
+      apertureDist = min(distLeft, distRight);
+    } else {
+      // Vertical Aperture (Gates translate on Y axis, curve varies with X)
+      float x = vWorldPos.x;
+      if (uWrapStyle == 0) {
+        delta = (x * x) / (2.0 * R) * depth;
+      } else if (uWrapStyle == 1) {
+        float normX = max(0.0, x + (uTotalWidth * 0.5));
+        delta = (normX * normX) / (4.0 * R) * depth;
+      } else if (uWrapStyle == 2) {
+        delta = depth * R * (1.0 - exp(-(x * x) / (R * R * 0.4)));
+      }
+
+      float bottomGateY = -uApertureWidth - delta;
+      float topGateY = uApertureWidth + delta;
+
+      float distBottom = vWorldPos.y - bottomGateY;
+      float distTop = topGateY - vWorldPos.y;
+      apertureDist = min(distBottom, distTop);
+    }
+
+    // Razor-Sharp Subpixel Antialiased Boundary
+    float edgeSpan = max(0.0001, fwidth(apertureDist));
+    float mask = clamp(apertureDist / edgeSpan + 0.5, 0.0, 1.0);
+
+    vec4 blinderColor;
+    if (uBgMode == 2) {
+      blinderColor = texture2D(tBgTexture, vUv);
+    } else {
+      blinderColor = vec4(uBlinderColor, uBlinderAlpha);
+    }
+
+    gl_FragColor = mix(blinderColor, contentColor, mask);
+
+    if (gl_FragColor.a < 0.001) discard;
   }
 `;
 
-const hourglassUniforms = {
+const apertureUniforms = {
   tDiffuse: { value: atlasTexture },
-  uCurviness: { value: state.curviness },
+  tBgTexture: { value: bgTexture },
+  uOffset: { value: 0.0 },
+  uImageCount: { value: 6.0 },
+  uApertureOrientation: { value: 0 },
+  uMarqueeDirection: { value: 0 },
   uWrapStyle: { value: 0 },
-  uOrientation: { value: 0 },
+  uApertureWidth: { value: state.apertureWidth },
+  uCurveRadius: { value: state.curveRadius },
+  uCurviness: { value: state.curviness },
+  uBlinderColor: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+  uBlinderAlpha: { value: 1.0 },
+  uBgMode: { value: 1 },
   uIs3D: { value: 0 },
   uCircularArc: { value: (state.circularArc * Math.PI) / 180 },
   uTotalWidth: { value: 1.6 },
-  uTotalHeight: { value: 1.6 },
-  uContentMode: { value: 0 },
-  uImageCount: { value: 6.0 },
-  uOffset: { value: 0.0 }
+  uTotalHeight: { value: 1.6 }
 };
 
-let surfaceMesh = null;
-let hourglassMaterial = null;
+let apertureMesh = null;
+let apertureMaterial = null;
 
-// Requirement 1 & 4: Mesh Generation (Dynamic Sequence Width)
+// Requirement 1 & 4: Mesh Generation (Dynamic Sequence Width without Squeezing)
 function buildHourglassMesh() {
-  if (surfaceMesh) {
-    scene.remove(surfaceMesh);
-    if (surfaceMesh.geometry) surfaceMesh.geometry.dispose();
+  if (apertureMesh) {
+    scene.remove(apertureMesh);
+    if (apertureMesh.geometry) apertureMesh.geometry.dispose();
   }
 
   const items = state.mediaItems;
   const count = Math.max(items.length, 1);
-  const H = 1.6; // Center frame dimension (1:1 square ratio)
 
-  const isHorizontal = state.orientation === 'horizontal';
+  // =========================================================================
+  // 🎯 TÙY CHỈNH KÍCH THƯỚC VÀ TỈ LỆ ẢNH TẠI ĐÂY:
+  // =========================================================================
+  
+  // 1. Khi ở [Vertical Aperture + Horizontal Flow]:
+  // Muốn ảnh ngắn chiều cao lại (bớt dọc, vuông hơn hoặc lùn hơn):
+  // Giảm 'h_vertAperture' xuống (mặc định trước đây bị ép lên 4.2)
+  const h_vertAperture = 2.2;  // <-- Chỉnh số này: giảm xuống 2.0, 1.8 hoặc 1.6 để ngắn chiều dài lại
 
-  // Total sequence width/height scales with item count
+  // 2. Khi ở [Horizontal Aperture + Vertical Flow]:
+  // Muốn ảnh có chiều cao dài hơn (bớt dẹt ngang, cao hơn):
+  // Tăng 'h_horizAperture' lên hoặc giảm độ rộng 'w_horizAperture'
+  const h_horizAperture = 2.6; // <-- Chỉnh số này: tăng lên để kéo dài chiều cao cho mỗi ảnh
+  const w_horizAperture = 2.4; // <-- Độ rộng khẩu độ ngang (trước đây bị ép 4.2 nên quá bè ngang)
+
+  // =========================================================================
+
   let totalWidth, totalHeight;
-  if (isHorizontal) {
-    totalWidth = count * H;
-    totalHeight = H;
+
+  if (state.marqueeDirection === 'horizontal') {
+    // Luồng ảnh chạy ngang
+    const frameW = 1.6; // Chiều rộng mỗi ô ảnh
+    totalWidth = count * frameW;
+    totalHeight = (state.orientation === 'vertical') ? h_vertAperture : 1.6;
   } else {
-    totalWidth = H;
-    totalHeight = count * H;
+    // Luồng ảnh chạy dọc
+    const frameH = (state.orientation === 'horizontal') ? h_horizAperture : 1.6;
+    totalWidth = (state.orientation === 'horizontal') ? w_horizAperture : 1.6;
+    totalHeight = count * frameH;
   }
 
-  const segX = isHorizontal ? Math.max(60, count * 30) : 60;
-  const segY = isHorizontal ? 60 : Math.max(60, count * 30);
-
+  // Khởi tạo lưới geometry
+  const segX = Math.max(80, Math.round(totalWidth * 20));
+  const segY = Math.max(80, Math.round(totalHeight * 20));
   const geometry = new THREE.PlaneGeometry(totalWidth, totalHeight, segX, segY);
 
-  if (!hourglassMaterial) {
-    hourglassMaterial = new THREE.ShaderMaterial({
-      uniforms: hourglassUniforms,
-      vertexShader: vertexShader,
-      fragmentShader: fragmentShader,
+
+  if (!apertureMaterial) {
+    apertureMaterial = new THREE.ShaderMaterial({
+      uniforms: apertureUniforms,
+      vertexShader: apertureVertexShader,
+      fragmentShader: apertureFragmentShader,
       side: THREE.DoubleSide,
       transparent: true
     });
   }
 
-  hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
-  hourglassMaterial.uniforms.uCurviness.value = state.curviness;
-  hourglassMaterial.uniforms.uWrapStyle.value =
+  apertureMaterial.uniforms.tDiffuse.value = atlasTexture;
+  apertureMaterial.uniforms.tBgTexture.value = bgTexture;
+  apertureMaterial.uniforms.uApertureWidth.value = state.apertureWidth;
+  apertureMaterial.uniforms.uCurveRadius.value = state.curveRadius;
+  apertureMaterial.uniforms.uCurviness.value = state.curviness;
+  apertureMaterial.uniforms.uWrapStyle.value =
     state.wrapStyle === 'hourglass' ? 0 : state.wrapStyle === 'arc-lower' ? 1 : 2;
-  hourglassMaterial.uniforms.uOrientation.value = isHorizontal ? 0 : 1;
-  hourglassMaterial.uniforms.uIs3D.value = state.spaceMode === '3d' ? 1 : 0;
-  hourglassMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
-  hourglassMaterial.uniforms.uTotalWidth.value = totalWidth;
-  hourglassMaterial.uniforms.uTotalHeight.value = totalHeight;
-  hourglassMaterial.uniforms.uContentMode.value = state.contentMode === 'images' ? 0 : 1;
-  hourglassMaterial.uniforms.uImageCount.value = count;
+  apertureMaterial.uniforms.uApertureOrientation.value = state.orientation === 'horizontal' ? 0 : 1;
+  apertureMaterial.uniforms.uMarqueeDirection.value = state.marqueeDirection === 'horizontal' ? 0 : 1;
+  apertureMaterial.uniforms.uIs3D.value = state.spaceMode === '3d' ? 1 : 0;
+  apertureMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
+  apertureMaterial.uniforms.uTotalWidth.value = totalWidth;
+  apertureMaterial.uniforms.uTotalHeight.value = totalHeight;
+  apertureMaterial.uniforms.uImageCount.value = count;
 
-  surfaceMesh = new THREE.Mesh(geometry, hourglassMaterial);
-  scene.add(surfaceMesh);
+  updateBackgroundRendering();
+
+  apertureMesh = new THREE.Mesh(geometry, apertureMaterial);
+  scene.add(apertureMesh);
 }
 
-// Preview Frame Sizing & Resizing
+// Bounding Frame Sizing
 const previewFrame = document.getElementById('preview-frame');
 const previewWrapper = document.getElementById('preview-frame-wrapper');
 const aspectTag = document.getElementById('frame-aspect-tag');
@@ -643,7 +674,6 @@ function resizePreviewFrame() {
   aspectTag.textContent = tagText;
 
   let frameW, frameH;
-
   if (isFullscreen) {
     frameW = containerW;
     frameH = frameW / targetRatio;
@@ -670,7 +700,7 @@ function resizePreviewFrame() {
   camera.updateProjectionMatrix();
 }
 
-// Sequence Strip UI & Drag Reorder
+// Sequence Strip UI
 const stripList = document.getElementById('strip-list');
 const sequenceCount = document.getElementById('sequence-count');
 
@@ -755,7 +785,7 @@ function renderSequenceStrip() {
   });
 }
 
-// File Upload Handlers
+// File Uploads
 const multiFileInput = document.getElementById('multi-file-input');
 const replaceFileInput = document.getElementById('replace-file-input');
 const dropzone = document.getElementById('dropzone');
@@ -820,6 +850,7 @@ replaceFileInput.onchange = (e) => {
       renderSequenceStrip();
       updateTextureAtlas();
       replaceFileInput.value = '';
+      buildHourglassMesh();
     };
     img.src = ev.target.result;
   };
@@ -872,6 +903,7 @@ document.querySelectorAll('.accordion-header').forEach(head => {
 document.getElementById('btn-theme-toggle').onclick = () => {
   state.uiTheme = state.uiTheme === 'dark' ? 'light' : 'dark';
   document.body.setAttribute('data-theme', state.uiTheme);
+  updateBackgroundRendering();
   updateTextureAtlas();
 };
 
@@ -880,7 +912,7 @@ document.getElementById('btn-toggle-sidebar').onclick = () => {
   setTimeout(resizePreviewFrame, 220);
 };
 
-// Aspect Preset & Dimensions
+// Aspect Presets
 const aspectDropdown = document.getElementById('aspect-preset');
 const customDimGroup = document.getElementById('custom-dim-group');
 const dimWInput = document.getElementById('dim-w');
@@ -901,7 +933,6 @@ dimHInput.oninput = () => {
   resizePreviewFrame();
 };
 
-// Reset Camera
 document.getElementById('btn-reset-camera').onclick = () => {
   camera.position.set(0, 0, 4.8);
   controls.target.set(0, 0, 0);
@@ -927,7 +958,7 @@ document.addEventListener('fullscreenchange', () => {
   setTimeout(resizePreviewFrame, 120);
 });
 
-// Play / Pause Motion
+// Play / Pause
 const barBtnPlay = document.getElementById('bar-btn-play');
 const iconPlay = document.getElementById('icon-bar-play');
 const iconPause = document.getElementById('icon-bar-pause');
@@ -968,7 +999,7 @@ document.getElementById('btn-reset-offset').onclick = () => {
   document.getElementById('val-marquee-offset').textContent = '0%';
 };
 
-// Text Controls
+// Text Inputs
 document.getElementById('text-ribbon-content').oninput = (e) => {
   state.textRibbon = e.target.value;
   updateTextureAtlas();
@@ -984,40 +1015,78 @@ document.getElementById('param-line-height').oninput = (e) => {
   updateTextureAtlas();
 };
 
-// Geometry Controls
+// Space Mode
 setupSegmented('space-mode-segment', (val) => {
   state.spaceMode = val;
   document.getElementById('row-circular-arc').style.display = val === '3d' ? 'flex' : 'none';
   buildHourglassMesh();
 });
 
+// Aperture Axis (Gates along X or Y)
 setupSegmented('orientation-segment', (val) => {
   state.orientation = val;
+  buildHourglassMesh();
+});
+
+// Marquee Direction Controller (Independent Flow along X or Y)
+setupSegmented('marquee-direction-segment', (val) => {
+  state.marqueeDirection = val;
   updateTextureAtlas();
   buildHourglassMesh();
 });
 
 setupSegmented('curve-profile-segment', (val) => {
   state.wrapStyle = val;
-  updateTextureAtlas();
-  buildHourglassMesh();
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.uWrapStyle.value =
+      val === 'hourglass' ? 0 : val === 'arc-lower' ? 1 : 2;
+  }
 });
 
+// Aperture Width Slider
+const apertureWidthSlider = document.getElementById('param-aperture-width');
+if (apertureWidthSlider) {
+  apertureWidthSlider.oninput = (e) => {
+    state.apertureWidth = parseFloat(e.target.value);
+    const lbl = document.getElementById('val-aperture-width');
+    if (lbl) lbl.textContent = state.apertureWidth.toFixed(2);
+    if (apertureMaterial) {
+      apertureMaterial.uniforms.uApertureWidth.value = state.apertureWidth;
+    }
+  };
+}
+
+// Curve Radius Slider
+const curveRadiusSlider = document.getElementById('param-curve-radius');
+if (curveRadiusSlider) {
+  curveRadiusSlider.oninput = (e) => {
+    state.curveRadius = parseFloat(e.target.value);
+    const lbl = document.getElementById('val-curve-radius');
+    if (lbl) lbl.textContent = state.curveRadius.toFixed(2);
+    if (apertureMaterial) {
+      apertureMaterial.uniforms.uCurveRadius.value = state.curveRadius;
+    }
+  };
+}
+
+// Curviness Depth Slider
 const curviInput = document.getElementById('param-curviness');
-curviInput.oninput = (e) => {
-  state.curviness = parseFloat(e.target.value);
-  document.getElementById('val-curviness').textContent = state.curviness.toFixed(2);
-  updateTextureAtlas();
-  if (hourglassMaterial) {
-    hourglassMaterial.uniforms.uCurviness.value = state.curviness;
-  }
-};
+if (curviInput) {
+  curviInput.oninput = (e) => {
+    state.curviness = parseFloat(e.target.value);
+    const lbl = document.getElementById('val-curviness');
+    if (lbl) lbl.textContent = state.curviness.toFixed(2);
+    if (apertureMaterial) {
+      apertureMaterial.uniforms.uCurviness.value = state.curviness;
+    }
+  };
+}
 
 document.getElementById('param-circular-arc').oninput = (e) => {
   state.circularArc = parseInt(e.target.value);
   document.getElementById('val-circular-arc').textContent = state.circularArc + '°';
-  if (hourglassMaterial) {
-    hourglassMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
   }
 };
 
@@ -1027,7 +1096,7 @@ document.getElementById('param-subdivisions').oninput = (e) => {
   buildHourglassMesh();
 };
 
-// Kinetic Animation
+// Animation
 document.getElementById('param-marquee-speed').oninput = (e) => {
   state.autoMarqueeSpeed = parseFloat(e.target.value);
   document.getElementById('val-marquee-speed').textContent = state.autoMarqueeSpeed.toFixed(2);
@@ -1036,7 +1105,7 @@ document.getElementById('param-marquee-speed').oninput = (e) => {
 const btnOscillate = document.getElementById('btn-toggle-oscillate');
 btnOscillate.onclick = () => {
   state.oscillateCurve = !state.oscillateCurve;
-  btnOscillate.firstElementChild.textContent = state.oscillateCurve ? 'Oscillate curve: On' : 'Oscillate curve: Off';
+  btnOscillate.firstElementChild.textContent = state.oscillateCurve ? 'Oscillate aperture: On' : 'Oscillate aperture: Off';
 };
 
 // Background Controls
@@ -1074,7 +1143,7 @@ document.getElementById('param-grad-angle').oninput = (e) => {
   updateBackgroundRendering();
 };
 
-// Export Logic
+// Export Management
 const exportModal = document.getElementById('export-modal');
 document.getElementById('btn-open-export').onclick = () => exportModal.classList.add('open');
 document.getElementById('btn-close-modal').onclick = () => exportModal.classList.remove('open');
@@ -1135,7 +1204,7 @@ function executeImageExport() {
   const dataURL = renderer.domElement.toDataURL(mime, exportJpegQuality);
 
   const link = document.createElement('a');
-  link.download = `BTS-Route-04-${Date.now()}.${exportImgFormat}`;
+  link.download = `BTS-Route-04-Aperture-${Date.now()}.${exportImgFormat}`;
   link.href = dataURL;
   link.click();
 
@@ -1181,7 +1250,7 @@ function executeVideoExport() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `BTS-Route-04-loop-${Date.now()}.${exportVidFormat === 'mp4' ? 'mp4' : 'webm'}`;
+    link.download = `BTS-Route-04-Aperture-${Date.now()}.${exportVidFormat === 'mp4' ? 'mp4' : 'webm'}`;
     link.click();
     URL.revokeObjectURL(url);
 
@@ -1199,7 +1268,7 @@ function executeVideoExport() {
     const progress = Math.min(100, Math.round((elapsed / totalMs) * 100));
     pFill.style.width = progress + '%';
     pPct.textContent = progress + '%';
-    pLabel.textContent = `Encoding (${(elapsed / 1000).toFixed(1)}s / ${exportDuration}s)...`;
+    pLabel.textContent = `Recording (${(elapsed / 1000).toFixed(1)}s / ${exportDuration}s)...`;
 
     if (elapsed >= totalMs) {
       clearInterval(timer);
@@ -1208,7 +1277,7 @@ function executeVideoExport() {
   }, 80);
 }
 
-// Animation Loop with GPU Uniform Sync
+// Render Animation Loop
 let lastTime = performance.now();
 
 function animate(currentTime) {
@@ -1221,18 +1290,20 @@ function animate(currentTime) {
   }
 
   const totalOffset = (state.accumulatedMotion + state.manualMarqueeOffset) % 1.0;
-  if (hourglassMaterial) {
-    hourglassMaterial.uniforms.uOffset.value = totalOffset;
+  if (apertureMaterial) {
+    apertureMaterial.uniforms.uOffset.value = totalOffset;
   }
 
+  // Smooth Aperture Breathing Oscillation
   if (state.oscillateCurve) {
-    state.oscillationTicker += delta * 2.5;
-    const wave = (Math.sin(state.oscillationTicker) + 1) / 2;
-    state.curviness = 0.15 + wave * 1.35;
-    document.getElementById('val-curviness').textContent = state.curviness.toFixed(2);
-    curviInput.value = state.curviness;
-    if (hourglassMaterial) {
-      hourglassMaterial.uniforms.uCurviness.value = state.curviness;
+    state.oscillationTicker += delta * 2.2;
+    const wave = (Math.sin(state.oscillationTicker) + 1.0) / 2.0;
+    state.apertureWidth = 0.05 + wave * 0.85;
+    const lbl = document.getElementById('val-aperture-width');
+    if (lbl) lbl.textContent = state.apertureWidth.toFixed(2);
+    if (apertureWidthSlider) apertureWidthSlider.value = state.apertureWidth;
+    if (apertureMaterial) {
+      apertureMaterial.uniforms.uApertureWidth.value = state.apertureWidth;
     }
   }
 
