@@ -212,7 +212,7 @@ stories stories stories stories</textarea>
         </div>
       </section>
 
-      <!-- Accordion 2: Hourglass geometry -->
+ <!-- Accordion 2: Hourglass geometry / Aperture reveal -->
       <section class="accordion-item open">
         <header class="accordion-header">
           <h2>Hourglass geometry</h2>
@@ -228,16 +228,15 @@ stories stories stories stories</textarea>
           </div>
 
           <div class="form-group">
-            <span class="field-label">Orientation</span>
+            <span class="field-label">Aperture axis</span>
             <div class="segmented-control" id="orientation-segment">
-              <button class="segment-btn active" data-value="horizontal">Horizontal wrap</button>
-              <button class="segment-btn" data-value="vertical">Vertical wrap</button>
+              <button class="segment-btn active" data-value="horizontal">Horizontal aperture</button>
+              <button class="segment-btn" data-value="vertical">Vertical aperture</button>
             </div>
           </div>
 
-          <!-- Wrap Style Selection -->
           <div class="form-group">
-            <span class="field-label">Wrap style</span>
+            <span class="field-label">Gate profile</span>
             <div class="segmented-control" id="curve-profile-segment">
               <button class="segment-btn active" data-value="hourglass">Hourglass</button>
               <button class="segment-btn" data-value="arc-lower">Arc lower</button>
@@ -245,14 +244,34 @@ stories stories stories stories</textarea>
             </div>
           </div>
 
+          <!-- Continuous Aperture Reveal Width Controller -->
           <div class="form-group">
             <div class="field-header">
-              <span class="field-label">Curviness intensity</span>
-              <span class="val-tag" id="val-curviness">0.65</span>
+              <span class="field-label">Aperture reveal width</span>
+              <span class="val-tag" id="val-aperture-width">0.35</span>
             </div>
-            <input type="range" id="param-curviness" min="0.0" max="2.0" step="0.02" value="0.65">
+            <input type="range" id="param-aperture-width" min="0.0" max="5" step="0.01" value="0.35">
           </div>
 
+          <!-- Fixed Arc Curvature Radius (R) -->
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Curvature radius (R)</span>
+              <span class="val-tag" id="val-curve-radius">1.20</span>
+            </div>
+            <input type="range" id="param-curve-radius" min="0.3" max="3.0" step="0.05" value="1.20">
+          </div>
+
+          <!-- Curviness Depth -->
+          <div class="form-group">
+            <div class="field-header">
+              <span class="field-label">Curviness depth</span>
+              <span class="val-tag" id="val-curviness">0.65</span>
+            </div>
+            <input type="range" id="param-curviness" min="0.0" max="1.5" step="0.02" value="0.65">
+          </div>
+
+          <!-- 3D Circular Arc Angle -->
           <div class="form-group" id="row-circular-arc" style="display:none;">
             <div class="field-header">
               <span class="field-label">3D circular arc angle</span>
@@ -277,7 +296,16 @@ stories stories stories stories</textarea>
           <h2>Kinetic animation</h2>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </header>
-        <div class="accordion-body">
+<div class="accordion-body">
+          <!-- Marquee Direction Toggle (Independent from Aperture axis) -->
+          <div class="form-group">
+            <span class="field-label">Marquee flow direction</span>
+            <div class="segmented-control" id="marquee-direction-segment">
+              <button class="segment-btn active" data-value="horizontal">Horizontal flow</button>
+              <button class="segment-btn" data-value="vertical">Vertical flow</button>
+            </div>
+          </div>
+
           <div class="form-group">
             <div class="field-header">
               <span class="field-label">Marquee motion speed</span>
@@ -288,7 +316,7 @@ stories stories stories stories</textarea>
 
           <div class="button-row">
             <button class="btn" id="btn-toggle-oscillate">
-              <span>Oscillate curve: Off</span>
+              <span>Oscillate aperture: Off</span>
             </button>
             <button class="btn" id="btn-reset-offset">
               <span>Reset offset</span>
