@@ -1,9 +1,9 @@
 /**
  * BTS Route 04 — Hourglass Kinetic Studio
- * Core Engine: Continuous Geometry & Shaped Typography
+ * Full Application Script (app.js)
  */
 
-// Application Reactive State
+// Application Reactive State (Defaults to Light Theme & White Canvas)
 const state = {
   uiTheme: 'light',
   aspectPreset: '16:9',
@@ -23,7 +23,7 @@ const state = {
   oscillateCurve: false,
   oscillationTicker: 0,
 
-  // Text Flow State (No Box/Stroke Fill, Pure Typography Profile)
+  // Text Flow State
   textRibbon: `stories stories stories stories
 technology stories
 ideas ideas ideas
@@ -41,9 +41,9 @@ stories stories stories stories`,
   customFontFamily: 'Inter',
 
   // Canvas Background State
-  bgMode: 'solid',            // 'solid' | 'gradient' | 'transparent'
+  bgMode: 'solid',
   solidColor: '#ffffff',
-  gradientType: 'linear',     // 'linear' | 'radial' | 'angle' | 'diamond'
+  gradientType: 'linear',
   gradColorA: '#222222',
   gradColorB: '#050505',
   gradAngle: 90,
@@ -55,7 +55,7 @@ stories stories stories stories`,
   accumulatedMotion: 0
 };
 
-// Procedural Card Factory (Clean Monochrome Textures)
+// Procedural Card Factory (Monochrome Architectural Texture Samples)
 function createProceduralCard(title, subtitle, colA, colB, motif) {
   const c = document.createElement('canvas');
   c.width = 1200;
@@ -69,13 +69,13 @@ function createProceduralCard(title, subtitle, colA, colB, motif) {
   ctx.fillRect(0, 0, c.width, c.height);
 
   if (motif === 'pipe') {
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 90;
     ctx.beginPath();
     ctx.arc(300, 300, 520, 0, Math.PI / 2);
     ctx.stroke();
   } else if (motif === 'islands') {
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.beginPath(); ctx.arc(440, 480, 160, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(740, 700, 120, 0, Math.PI * 2); ctx.fill();
   } else if (motif === 'bridge') {
@@ -88,7 +88,7 @@ function createProceduralCard(title, subtitle, colA, colB, motif) {
     ctx.moveTo(600, 340); ctx.lineTo(600, 1200);
     ctx.setLineDash([30, 20]); ctx.stroke(); ctx.setLineDash([]);
   } else if (motif === 'cad') {
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
     ctx.lineWidth = 3;
     for (let i = 0; i <= 1200; i += 90) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1200); ctx.stroke();
@@ -100,7 +100,7 @@ function createProceduralCard(title, subtitle, colA, colB, motif) {
   ctx.font = '700 52px Inter, sans-serif';
   ctx.fillText(title.toUpperCase(), 70, 140);
   ctx.font = '400 28px Inter, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.fillText(subtitle, 70, 195);
 
   return {
@@ -132,9 +132,9 @@ const renderer = new THREE.WebGLRenderer({
   alpha: true,
   preserveDrawingBuffer: true
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// True-to-Source sRGB Color Space with No Tone Mapping Washout
+// Requirement 3: Sharp Texture & Display Ratio
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.NoToneMapping;
 container.appendChild(renderer.domElement);
@@ -143,15 +143,26 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.minDistance = 1.0;
-controls.maxDistance = 20;
+controls.maxDistance = 25;
 
-// Dynamic Background Canvas
+// Sharp Texture Configurator
+function configureSharpTexture(texture) {
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.encoding = THREE.sRGBEncoding;
+}
+
+// Background Canvas Setup
 const bgCanvas = document.createElement('canvas');
 bgCanvas.width = 1024;
 bgCanvas.height = 1024;
 const bgCtx = bgCanvas.getContext('2d');
 const bgTexture = new THREE.CanvasTexture(bgCanvas);
-bgTexture.encoding = THREE.sRGBEncoding;
+configureSharpTexture(bgTexture);
 
 function updateBackgroundRendering() {
   if (state.bgMode === 'transparent') {
@@ -166,7 +177,6 @@ function updateBackgroundRendering() {
     return;
   }
 
-  // Gradients
   bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
   const w = bgCanvas.width;
   const h = bgCanvas.height;
@@ -244,21 +254,7 @@ function hexToRgb(hex) {
   } : { r: 0, g: 0, b: 0 };
 }
 
-// Offscreen Composite Texture Atlas
-const atlasCanvas = document.createElement('canvas');
-atlasCanvas.width = 2048;
-atlasCanvas.height = 2048;
-const atlasCtx = atlasCanvas.getContext('2d');
-
-const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
-// Crucial: RepeatWrapping on BOTH S and T prevents streaking and seams
-atlasTexture.wrapS = THREE.RepeatWrapping;
-atlasTexture.wrapT = THREE.RepeatWrapping;
-atlasTexture.encoding = THREE.sRGBEncoding;
-atlasTexture.generateMipmaps = true;
-atlasTexture.minFilter = THREE.LinearMipmapLinearFilter;
-
-// Aspect Ratio Preserving Image Draw Helper
+// Requirement 2: Aspect-Fill / Object-Cover Canvas Drawer
 function drawImageCover(ctx, img, x, y, w, h) {
   const imgW = img.width || img.naturalWidth || 1;
   const imgH = img.height || img.naturalHeight || 1;
@@ -279,8 +275,78 @@ function drawImageCover(ctx, img, x, y, w, h) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
-// Text Mode: Shaped Typography Flow Without Box/Stroke Fills
+// Requirement 1 & 2: Dynamic Sequence Width & Cover Atlas
+const atlasCanvas = document.createElement('canvas');
+const atlasCtx = atlasCanvas.getContext('2d');
+let atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+configureSharpTexture(atlasTexture);
+
+function updateTextureAtlas() {
+  if (state.contentMode === 'text') {
+    renderShapedTypography();
+    return;
+  }
+
+  const items = state.mediaItems;
+  const count = Math.max(items.length, 1);
+  const slotSize = 1024; // Square 1:1 slot base
+  const isVertical = state.orientation === 'vertical';
+
+  // Total canvas dynamically matches sequence length
+  if (!isVertical) {
+    atlasCanvas.width = count * slotSize;
+    atlasCanvas.height = slotSize;
+  } else {
+    atlasCanvas.width = slotSize;
+    atlasCanvas.height = count * slotSize;
+  }
+
+  atlasCtx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+
+  if (items.length === 0) {
+    atlasCtx.fillStyle = '#111111';
+    atlasCtx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+  } else {
+    const gap = state.slotGap;
+    items.forEach((item, idx) => {
+      if (!isVertical) {
+        const x = idx * slotSize;
+        drawImageCover(
+          atlasCtx,
+          item.canvas,
+          x + gap / 2,
+          gap / 2,
+          slotSize - gap,
+          slotSize - gap
+        );
+      } else {
+        const y = idx * slotSize;
+        drawImageCover(
+          atlasCtx,
+          item.canvas,
+          gap / 2,
+          y + gap / 2,
+          slotSize - gap,
+          slotSize - gap
+        );
+      }
+    });
+  }
+
+  atlasTexture.dispose();
+  atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+  configureSharpTexture(atlasTexture);
+
+  if (hourglassMaterial) {
+    hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
+    hourglassMaterial.uniforms.uImageCount.value = count;
+  }
+}
+
+// Shaped Typography Flow (No Box/Stroke Fill, Pure Text Contour)
 function renderShapedTypography() {
+  atlasCanvas.width = 2048;
+  atlasCanvas.height = 2048;
   atlasCtx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
 
   const w = atlasCanvas.width;
@@ -294,7 +360,6 @@ function renderShapedTypography() {
   const lineSpacing = fontSize * state.lineHeightFactor;
   atlasCtx.font = `600 ${fontSize}px "${state.customFontFamily}", Inter, sans-serif`;
 
-  // Contrast color based on background
   const isLightBg = (state.bgMode === 'solid' && state.solidColor.toLowerCase() === '#ffffff') ||
                     (state.bgMode === 'transparent' && state.uiTheme === 'light');
   atlasCtx.fillStyle = isLightBg ? '#000000' : '#ffffff';
@@ -304,17 +369,14 @@ function renderShapedTypography() {
   const intensity = state.curviness;
 
   if (isVertical) {
-    // Vertical Hourglass: lines stacked vertically, line width pinches at waist
     const totalLines = rawLines.length;
     const blockHeight = totalLines * lineSpacing;
     const startY = (h - blockHeight) / 2 + lineSpacing / 2;
 
     rawLines.forEach((line, idx) => {
       const y = startY + idx * lineSpacing;
-      // Normalized vertical pos [-1, 1]
       const normY = (y - h / 2) / (h / 2);
-      
-      // Calculate allowable width at waist: wider at top/bottom, narrower at center
+
       let pinchFactor = 1.0;
       if (state.wrapStyle === 'hourglass') {
         pinchFactor = 1.0 - intensity * (1.0 - Math.pow(normY, 2)) * 0.65;
@@ -326,11 +388,9 @@ function renderShapedTypography() {
 
       const maxLineWidth = Math.max(100, (w * 0.9) * Math.max(0.2, pinchFactor));
 
-      // Draw user's line centered cleanly without background box or strokes
       atlasCtx.save();
       const measuredW = atlasCtx.measureText(line).width;
       if (measuredW > maxLineWidth) {
-        // Gently compress spacing if line exceeds waist profile
         const scale = maxLineWidth / measuredW;
         atlasCtx.translate(w / 2, y);
         atlasCtx.scale(scale, scale);
@@ -341,7 +401,6 @@ function renderShapedTypography() {
       atlasCtx.restore();
     });
   } else {
-    // Horizontal Layout: words typeset across the horizontal corridor
     const totalLines = rawLines.length;
     const blockHeight = totalLines * lineSpacing;
     const startY = (h - blockHeight) / 2 + lineSpacing / 2;
@@ -352,173 +411,213 @@ function renderShapedTypography() {
     });
   }
 
-  atlasTexture.needsUpdate = true;
+  atlasTexture.dispose();
+  atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+  configureSharpTexture(atlasTexture);
+
+  if (hourglassMaterial) {
+    hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
+    hourglassMaterial.uniforms.uImageCount.value = 1.0;
+  }
 }
 
-// Update Texture Atlas
-function updateTextureAtlas() {
-  if (state.contentMode === 'text') {
-    renderShapedTypography();
-    return;
-  }
+// GLSL Shaders for Continuous Geometry & Aspect-Fill Sampling
+const vertexShader = `
+  varying vec2 vUv;
+  varying float vPinch;
 
-  atlasCtx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
-  const isVertical = state.orientation === 'vertical';
-  const items = state.mediaItems;
+  uniform float uCurviness;
+  uniform int uWrapStyle;
+  uniform int uOrientation;
+  uniform int uIs3D;
+  uniform float uCircularArc;
+  uniform float uTotalWidth;
+  uniform float uTotalHeight;
+  uniform int uContentMode;
 
-  if (items.length === 0) {
-    atlasCtx.fillStyle = '#111111';
-    atlasCtx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
-    atlasTexture.needsUpdate = true;
-    return;
-  }
+  void main() {
+    vUv = uv;
 
-  const gap = state.slotGap;
+    float u = position.x / (uTotalWidth * 0.5);
+    float v = position.y / (uTotalHeight * 0.5);
 
-  if (!isVertical) {
-    // Horizontal side-by-side arrangement
-    const slotWidth = atlasCanvas.width / items.length;
-    items.forEach((item, idx) => {
-      const x = idx * slotWidth;
-      drawImageCover(
-        atlasCtx,
-        item.canvas,
-        x + gap / 2,
-        gap / 2,
-        slotWidth - gap,
-        atlasCanvas.height - gap
-      );
-      if (gap === 0 && idx > 0) {
-        atlasCtx.strokeStyle = 'rgba(255,255,255,0.12)';
-        atlasCtx.lineWidth = 2;
-        atlasCtx.beginPath();
-        atlasCtx.moveTo(x, 0);
-        atlasCtx.lineTo(x, atlasCanvas.height);
-        atlasCtx.stroke();
+    float pinch = 1.0;
+
+    if (uContentMode == 0) {
+      if (uOrientation == 0) {
+        if (uWrapStyle == 0) {
+          pinch = 1.0 - uCurviness * (1.0 - u * u) * 0.46;
+        } else if (uWrapStyle == 1) {
+          float normV = (v + 1.0) * 0.5;
+          pinch = 1.0 - normV * (uCurviness * (1.0 - u * u) * 0.55);
+        } else if (uWrapStyle == 2) {
+          pinch = 1.0 - uCurviness * exp(-pow(u * 2.6, 2.0)) * 0.58;
+        }
+      } else {
+        if (uWrapStyle == 0) {
+          pinch = 1.0 - uCurviness * (1.0 - v * v) * 0.46;
+        } else if (uWrapStyle == 1) {
+          float normV = (v + 1.0) * 0.5;
+          pinch = 1.0 - normV * (uCurviness * (1.0 - v * v) * 0.55);
+        } else if (uWrapStyle == 2) {
+          pinch = 1.0 - uCurviness * exp(-pow(v * 2.6, 2.0)) * 0.58;
+        }
       }
-    });
-  } else {
-    // Vertical stacked arrangement with aspect-ratio cover
-    const slotHeight = atlasCanvas.height / items.length;
-    items.forEach((item, idx) => {
-      const y = idx * slotHeight;
-      drawImageCover(
-        atlasCtx,
-        item.canvas,
-        gap / 2,
-        y + gap / 2,
-        atlasCanvas.width - gap,
-        slotHeight - gap
-      );
-      if (gap === 0 && idx > 0) {
-        atlasCtx.strokeStyle = 'rgba(255,255,255,0.12)';
-        atlasCtx.lineWidth = 2;
-        atlasCtx.beginPath();
-        atlasCtx.moveTo(0, y);
-        atlasCtx.lineTo(atlasCanvas.width, y);
-        atlasCtx.stroke();
+    }
+
+    vPinch = pinch;
+    vec3 pos = position;
+
+    if (uContentMode == 0) {
+      if (uOrientation == 0) {
+        if (uWrapStyle == 1) {
+          float normV = (v + 1.0) * 0.5;
+          pos.y -= normV * (uCurviness * (1.0 - u * u) * (uTotalHeight * 0.55));
+        } else {
+          pos.y *= pinch;
+        }
+      } else {
+        if (uWrapStyle == 1) {
+          float normV = (v + 1.0) * 0.5;
+          pos.y -= normV * (uCurviness * (1.0 - v * v) * (uTotalHeight * 0.55));
+        } else {
+          pos.x *= pinch;
+        }
       }
-    });
+    }
+
+    if (uIs3D == 1) {
+      float radius = uTotalWidth / uCircularArc;
+      float theta = (pos.x / uTotalWidth) * uCircularArc;
+      pos.x = sin(theta) * radius;
+      pos.z = -cos(theta) * radius + radius;
+    }
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
   }
+`;
 
-  atlasTexture.needsUpdate = true;
-}
+const fragmentShader = `
+  uniform sampler2D tDiffuse;
+  uniform float uImageCount;
+  uniform float uOffset;
+  uniform int uOrientation;
+  uniform int uContentMode;
 
-// Parametric Hourglass Mesh Builder
-// Continuous vertex equations prevent seams, tears, or shearing
+  varying vec2 vUv;
+  varying float vPinch;
+
+  void main() {
+    if (uContentMode == 1) {
+      gl_FragColor = texture2D(tDiffuse, vUv);
+      return;
+    }
+
+    vec2 finalUv;
+
+    if (uOrientation == 0) {
+      float uScrolled = fract(vUv.x + uOffset);
+      float frameFloat = uScrolled * uImageCount;
+      float frameIndex = floor(frameFloat);
+      float uLocal = fract(frameFloat);
+
+      // Requirement 2: Aspect-Fill / Cover around center (uv - 0.5)
+      vec2 centered = vec2(uLocal - 0.5, vUv.y - 0.5);
+      centered.y *= vPinch;
+
+      vec2 localCoverUv = clamp(centered + 0.5, 0.0, 1.0);
+      float atlasU = (frameIndex + localCoverUv.x) / uImageCount;
+      finalUv = vec2(atlasU, localCoverUv.y);
+    } else {
+      float vScrolled = fract(vUv.y + uOffset);
+      float frameFloat = vScrolled * uImageCount;
+      float frameIndex = floor(frameFloat);
+      float vLocal = fract(frameFloat);
+
+      vec2 centered = vec2(vUv.x - 0.5, vLocal - 0.5);
+      centered.x *= vPinch;
+
+      vec2 localCoverUv = clamp(centered + 0.5, 0.0, 1.0);
+      float atlasV = (frameIndex + localCoverUv.y) / uImageCount;
+      finalUv = vec2(localCoverUv.x, atlasV);
+    }
+
+    gl_FragColor = texture2D(tDiffuse, finalUv);
+  }
+`;
+
+const hourglassUniforms = {
+  tDiffuse: { value: atlasTexture },
+  uCurviness: { value: state.curviness },
+  uWrapStyle: { value: 0 },
+  uOrientation: { value: 0 },
+  uIs3D: { value: 0 },
+  uCircularArc: { value: (state.circularArc * Math.PI) / 180 },
+  uTotalWidth: { value: 1.6 },
+  uTotalHeight: { value: 1.6 },
+  uContentMode: { value: 0 },
+  uImageCount: { value: 6.0 },
+  uOffset: { value: 0.0 }
+};
+
 let surfaceMesh = null;
+let hourglassMaterial = null;
 
+// Requirement 1 & 4: Mesh Generation (Dynamic Sequence Width)
 function buildHourglassMesh() {
   if (surfaceMesh) {
     scene.remove(surfaceMesh);
     if (surfaceMesh.geometry) surfaceMesh.geometry.dispose();
-    if (surfaceMesh.material) surfaceMesh.material.dispose();
   }
 
-  const segX = state.subdivisions;
-  const segY = Math.round(state.subdivisions / 2);
-  const width = 4.2;
-  const height = 1.6;
+  const items = state.mediaItems;
+  const count = Math.max(items.length, 1);
+  const H = 1.6; // Center frame dimension (1:1 square ratio)
 
-  const geometry = new THREE.PlaneGeometry(width, height, segX, segY);
-  const pos = geometry.attributes.position;
   const isHorizontal = state.orientation === 'horizontal';
-  const is3D = state.spaceMode === '3d';
-  const arcRad = (state.circularArc * Math.PI) / 180;
-  const radius = width / arcRad;
-  const intensity = state.curviness;
 
-  // In text mode, line widths conform naturally to shape; geometry remains planar/clean
-  const applyVertexDeform = state.contentMode !== 'text';
-
-  for (let i = 0; i < pos.count; i++) {
-    // Original normalized coordinates u, v in [-1, 1]
-    const u = pos.getX(i) / (width / 2);
-    const v = pos.getY(i) / (height / 2);
-
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
-
-    if (applyVertexDeform) {
-      if (isHorizontal) {
-        // Horizontal Wrap: waist pinches along the vertical axis (at center u=0)
-        let pinch = 1.0;
-        if (state.wrapStyle === 'hourglass') {
-          pinch = 1.0 - intensity * (1.0 - Math.pow(u, 2)) * 0.46;
-          y = (height / 2) * v * pinch;
-        } else if (state.wrapStyle === 'arc-lower') {
-          // Top edge dips downward (concave curve); bottom edge remains completely flat
-          const normV = (v + 1.0) / 2.0; // 0 at bottom, 1 at top
-          const concaveDip = intensity * (1.0 - Math.pow(u, 2)) * (height * 0.55);
-          y = pos.getY(i) - normV * concaveDip;
-        } else if (state.wrapStyle === 'pinch') {
-          pinch = 1.0 - intensity * Math.exp(-Math.pow(u * 2.6, 2)) * 0.58;
-          y = (height / 2) * v * pinch;
-        }
-      } else {
-        // Vertical Wrap: waist pinches along the horizontal axis (at center v=0)
-        let pinch = 1.0;
-        if (state.wrapStyle === 'hourglass') {
-          pinch = 1.0 - intensity * (1.0 - Math.pow(v, 2)) * 0.46;
-          x = (width / 2) * u * pinch;
-        } else if (state.wrapStyle === 'arc-lower') {
-          // Top edge curves inward, bottom edge remains flat
-          const normV = (v + 1.0) / 2.0;
-          const concaveDip = intensity * (1.0 - Math.pow(u, 2)) * (height * 0.55);
-          y = pos.getY(i) - normV * concaveDip;
-        } else if (state.wrapStyle === 'pinch') {
-          pinch = 1.0 - intensity * Math.exp(-Math.pow(v * 2.6, 2)) * 0.58;
-          x = (width / 2) * u * pinch;
-        }
-      }
-    }
-
-    // 3D Circular Space Wrap
-    // Continuous cylinder projection prevents middle seam glitches
-    if (is3D) {
-      const theta = (x / width) * arcRad;
-      x = Math.sin(theta) * radius;
-      z = -Math.cos(theta) * radius + radius;
-    }
-
-    pos.setXYZ(i, x, y, z);
+  // Total sequence width/height scales with item count
+  let totalWidth, totalHeight;
+  if (isHorizontal) {
+    totalWidth = count * H;
+    totalHeight = H;
+  } else {
+    totalWidth = H;
+    totalHeight = count * H;
   }
 
-  geometry.computeVertexNormals();
+  const segX = isHorizontal ? Math.max(60, count * 30) : 60;
+  const segY = isHorizontal ? 60 : Math.max(60, count * 30);
 
-  // Double-sided unlit material: never disappears when orbiting behind
-  const material = new THREE.MeshBasicMaterial({
-    map: atlasTexture,
-    side: THREE.DoubleSide,
-    transparent: true
-  });
+  const geometry = new THREE.PlaneGeometry(totalWidth, totalHeight, segX, segY);
 
-  surfaceMesh = new THREE.Mesh(geometry, material);
+  if (!hourglassMaterial) {
+    hourglassMaterial = new THREE.ShaderMaterial({
+      uniforms: hourglassUniforms,
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true
+    });
+  }
+
+  hourglassMaterial.uniforms.tDiffuse.value = atlasTexture;
+  hourglassMaterial.uniforms.uCurviness.value = state.curviness;
+  hourglassMaterial.uniforms.uWrapStyle.value =
+    state.wrapStyle === 'hourglass' ? 0 : state.wrapStyle === 'arc-lower' ? 1 : 2;
+  hourglassMaterial.uniforms.uOrientation.value = isHorizontal ? 0 : 1;
+  hourglassMaterial.uniforms.uIs3D.value = state.spaceMode === '3d' ? 1 : 0;
+  hourglassMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
+  hourglassMaterial.uniforms.uTotalWidth.value = totalWidth;
+  hourglassMaterial.uniforms.uTotalHeight.value = totalHeight;
+  hourglassMaterial.uniforms.uContentMode.value = state.contentMode === 'images' ? 0 : 1;
+  hourglassMaterial.uniforms.uImageCount.value = count;
+
+  surfaceMesh = new THREE.Mesh(geometry, hourglassMaterial);
   scene.add(surfaceMesh);
 }
 
-// Bounding Preview Frame Geometry & Layout Management
+// Preview Frame Sizing & Resizing
 const previewFrame = document.getElementById('preview-frame');
 const previewWrapper = document.getElementById('preview-frame-wrapper');
 const aspectTag = document.getElementById('frame-aspect-tag');
@@ -571,7 +670,7 @@ function resizePreviewFrame() {
   camera.updateProjectionMatrix();
 }
 
-// Sequence Thumbnail List & Drag Reorder
+// Sequence Strip UI & Drag Reorder
 const stripList = document.getElementById('strip-list');
 const sequenceCount = document.getElementById('sequence-count');
 
@@ -626,6 +725,7 @@ function renderSequenceStrip() {
         state.mediaItems.splice(toIdx, 0, moved);
         renderSequenceStrip();
         updateTextureAtlas();
+        buildHourglassMesh();
       }
     });
 
@@ -650,6 +750,7 @@ function renderSequenceStrip() {
       state.mediaItems.splice(idx, 1);
       renderSequenceStrip();
       updateTextureAtlas();
+      buildHourglassMesh();
     };
   });
 }
@@ -690,6 +791,7 @@ function addFilesToSequence(files) {
         });
         renderSequenceStrip();
         updateTextureAtlas();
+        buildHourglassMesh();
       };
       img.src = ev.target.result;
     };
@@ -778,7 +880,7 @@ document.getElementById('btn-toggle-sidebar').onclick = () => {
   setTimeout(resizePreviewFrame, 220);
 };
 
-// Aspect Preset
+// Aspect Preset & Dimensions
 const aspectDropdown = document.getElementById('aspect-preset');
 const customDimGroup = document.getElementById('custom-dim-group');
 const dimWInput = document.getElementById('dim-w');
@@ -825,7 +927,7 @@ document.addEventListener('fullscreenchange', () => {
   setTimeout(resizePreviewFrame, 120);
 });
 
-// Play / Pause Motion on Bar
+// Play / Pause Motion
 const barBtnPlay = document.getElementById('bar-btn-play');
 const iconPlay = document.getElementById('icon-bar-play');
 const iconPause = document.getElementById('icon-bar-pause');
@@ -853,12 +955,10 @@ document.getElementById('param-slot-gap').oninput = (e) => {
   updateTextureAtlas();
 };
 
-// Marquee Offset
 const offsetSlider = document.getElementById('param-marquee-offset');
 offsetSlider.oninput = (e) => {
   state.manualMarqueeOffset = parseFloat(e.target.value) / 100;
   document.getElementById('val-marquee-offset').textContent = e.target.value + '%';
-  syncTexturePosition();
 };
 
 document.getElementById('btn-reset-offset').onclick = () => {
@@ -866,22 +966,9 @@ document.getElementById('btn-reset-offset').onclick = () => {
   state.accumulatedMotion = 0;
   offsetSlider.value = 0;
   document.getElementById('val-marquee-offset').textContent = '0%';
-  syncTexturePosition();
 };
 
-function syncTexturePosition() {
-  const isVertical = state.orientation === 'vertical';
-  const totalOffset = (state.accumulatedMotion + state.manualMarqueeOffset) % 1.0;
-  if (isVertical) {
-    atlasTexture.offset.y = totalOffset;
-    atlasTexture.offset.x = 0;
-  } else {
-    atlasTexture.offset.x = totalOffset;
-    atlasTexture.offset.y = 0;
-  }
-}
-
-// Text Inputs
+// Text Controls
 document.getElementById('text-ribbon-content').oninput = (e) => {
   state.textRibbon = e.target.value;
   updateTextureAtlas();
@@ -908,7 +995,6 @@ setupSegmented('orientation-segment', (val) => {
   state.orientation = val;
   updateTextureAtlas();
   buildHourglassMesh();
-  syncTexturePosition();
 });
 
 setupSegmented('curve-profile-segment', (val) => {
@@ -922,13 +1008,17 @@ curviInput.oninput = (e) => {
   state.curviness = parseFloat(e.target.value);
   document.getElementById('val-curviness').textContent = state.curviness.toFixed(2);
   updateTextureAtlas();
-  buildHourglassMesh();
+  if (hourglassMaterial) {
+    hourglassMaterial.uniforms.uCurviness.value = state.curviness;
+  }
 };
 
 document.getElementById('param-circular-arc').oninput = (e) => {
   state.circularArc = parseInt(e.target.value);
   document.getElementById('val-circular-arc').textContent = state.circularArc + '°';
-  buildHourglassMesh();
+  if (hourglassMaterial) {
+    hourglassMaterial.uniforms.uCircularArc.value = (state.circularArc * Math.PI) / 180;
+  }
 };
 
 document.getElementById('param-subdivisions').oninput = (e) => {
@@ -1118,7 +1208,7 @@ function executeVideoExport() {
   }, 80);
 }
 
-// Animation Loop
+// Animation Loop with GPU Uniform Sync
 let lastTime = performance.now();
 
 function animate(currentTime) {
@@ -1128,7 +1218,11 @@ function animate(currentTime) {
 
   if (state.isPlaying) {
     state.accumulatedMotion += delta * state.autoMarqueeSpeed * 0.15;
-    syncTexturePosition();
+  }
+
+  const totalOffset = (state.accumulatedMotion + state.manualMarqueeOffset) % 1.0;
+  if (hourglassMaterial) {
+    hourglassMaterial.uniforms.uOffset.value = totalOffset;
   }
 
   if (state.oscillateCurve) {
@@ -1137,8 +1231,9 @@ function animate(currentTime) {
     state.curviness = 0.15 + wave * 1.35;
     document.getElementById('val-curviness').textContent = state.curviness.toFixed(2);
     curviInput.value = state.curviness;
-    updateTextureAtlas();
-    buildHourglassMesh();
+    if (hourglassMaterial) {
+      hourglassMaterial.uniforms.uCurviness.value = state.curviness;
+    }
   }
 
   controls.update();
@@ -1147,7 +1242,7 @@ function animate(currentTime) {
 
 window.addEventListener('resize', resizePreviewFrame);
 
-// Initial Studio Boot
+// Studio Boot
 renderSequenceStrip();
 updateTextureAtlas();
 updateBackgroundRendering();
